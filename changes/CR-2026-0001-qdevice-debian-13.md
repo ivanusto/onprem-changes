@@ -1,7 +1,7 @@
 ---
 id: CR-2026-0001
 title: 把 QDevice VM 從 Debian 12 升到 13
-status: scheduled
+status: done
 type: standard
 risk: medium
 requester: ivan
@@ -99,10 +99,8 @@ sudo -u metrics /opt/onprem-changes/scripts/change-mark.sh end CR-2026-0001
 
 ## 紀錄
 
-執行時填。
-
-- begin: 
-- end: 
-- result: 
-- evidence: 
-- followups: 
+- begin: 2026-10-10T22:45:04+08:00（pve1 的 logger），收集端 `change-mark.sh begin` 22:45:06，Grafana 註記 2，silence 751e35fd 到 23:45
+- end: 2026-10-10T22:55:07+08:00（pve1 與收集端），註記 2 補上 timeEnd，silence 失效
+- result: 成功。Debian 12.15 升到 13.7，核心 6.1.0-53 到 6.12.111+deb13，corosync-qnetd 3.0.3-1 到 3.0.3-2，openssh-server 9.2p1-2+deb12u10 到 10.0p1-7+deb13u4（sshd_config 保留，root 與密碼登入仍關）。apt 從 22:46:37 跑到 22:53:32。重開機時 QDevice 缺席約 30 秒（pve1 `check.sh` 22:54:07 回 1，22:54:36 回 0），`PveQdeviceAbsent` 的 `for: 2m` 沒到，silence 沒有實際壓下任何告警。`apt modernize-sources` 已做，sources.list 轉成 `sources.list.d/debian.sources`，舊檔留 `.bak`
+- evidence: VictoriaLogs `_time:[2026-10-10T22:45:00+08:00, 2026-10-10T23:45:00+08:00) SYSLOG_IDENTIFIER:change "CR-2026-0001"` 四行；不加 `SYSLOG_IDENTIFIER` 是九行，多出收集端 sudo 的三行與 NAS 事件日誌裡 Virtualization Station 建立快照 `CR-2026-0001-before` 的兩行（22:46:30、22:46:44）。Grafana 註記 2（tags change、CR-2026-0001）。VM 上 `/root/cr0001-upgrade.log`。SSH 橫幅 `OpenSSH_10.0p2 Debian-7+deb13u4`
+- followups: 2026-10-11 22:55 後刪快照 `CR-2026-0001-before`；onprem-metrics `eol/assets.tsv` 的 qdevice 兩列改成 13，commit 帶本單編號；收回執行用的暫時權限（VM 上 ivan 的第二把公鑰、`/etc/sudoers.d/day26-temp`）；22:31 到 22:35 為了取得 sudo 重設 root 密碼的重開機在窗外、沒有單子，`PveQdeviceAbsent` 22:34:50 到 22:36:35 firing，補 CR-2026-0006（emergency）
