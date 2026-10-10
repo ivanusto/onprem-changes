@@ -1,13 +1,13 @@
 ---
 id: CR-2026-0001
 title: 把 QDevice VM 從 Debian 12 升到 13
-status: draft
+status: approved
 type: standard
 risk: medium
 requester: ivan
 implementer: ivan
 approver: ivan
-approval_exception: 單人實驗場域，沒有第二位核准者。以 PR 自審加 24 小時冷卻期取代，PR 開啟時間與合併時間在 git log
+approval_exception: 單人實驗場域，沒有第二位核准者。以 PR 自審加 24 小時冷卻期取代，PR 開啟時間與合併時間在 git log。這一張的冷卻沒有滿 24 小時，因為它同時是 change-mark.sh 的第一次實測，核准與執行在同一晚，PR 由擁有者以管理員略過合併
 assets:
   - qdevice/Debian
 window_start: 
