@@ -1,7 +1,7 @@
 ---
 id: CR-2026-0001
 title: 把 QDevice VM 從 Debian 12 升到 13
-status: approved
+status: scheduled
 type: standard
 risk: medium
 requester: ivan
@@ -10,8 +10,8 @@ approver: ivan
 approval_exception: 單人實驗場域，沒有第二位核准者。以 PR 自審加 24 小時冷卻期取代，PR 開啟時間與合併時間在 git log。這一張的冷卻沒有滿 24 小時，因為它同時是 change-mark.sh 的第一次實測，核准與執行在同一晚，PR 由擁有者以管理員略過合併
 assets:
   - qdevice/Debian
-window_start: 
-window_end: 
+window_start: 2026-10-10T22:45:00+08:00
+window_end: 2026-10-10T23:45:00+08:00
 silence: alertname=PveQdeviceAbsent
 tags: pve, qdevice, debian, eol
 ---
@@ -43,12 +43,13 @@ sudo -u metrics /opt/onprem-changes/scripts/change-mark.sh begin CR-2026-0001   
 
 在 NAS 的 Virtualization Station 上，對 QDevice VM 拍一個快照，名稱 `CR-2026-0001-before`。Day 15 說這台不需要快照，那是對日常。對一次就地升級，一個能在一分鐘內回到升級前的快照是最便宜的回退。
 
-在 QDevice VM 上（以金鑰登入）：
+在 QDevice VM 上（以金鑰登入，ivan 經 sudo）：
 
 ```sh
+sudo -i
 cat /etc/debian_version                               # 12.x
 apt update && apt full-upgrade -y && apt autoremove -y   # 先把 12 補到最新
-sed -i 's/bookworm/trixie/g' /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null
+sed -i 's/bookworm/trixie/g' /etc/apt/sources.list   # 這台只有 sources.list，sources.list.d 是空的
 grep -r trixie /etc/apt/sources.list /etc/apt/sources.list.d/           # 確認沒有漏掉的 bookworm
 apt update
 apt upgrade --without-new-pkgs -y                     # Debian 發行說明的兩階段升級
@@ -86,7 +87,7 @@ sudo -u metrics /opt/onprem-changes/scripts/change-mark.sh end CR-2026-0001
 
 - `check.sh` 在 pve1 上回 0，`pvecm status` 的 Qdevice 列有一票。
 - Day 20 的 `pve_quorum_qdevice_votes` 回到 1，`PveQdeviceAbsent` 不再 pending。
-- 收集端查 `_time:[2026-10-11T22:00:00+08:00, 2026-10-11T23:00:00+08:00) "CR-2026-0001"`，看得到 pve1 與收集端的 begin 與 end 四行。
+- 收集端查 `_time:[2026-10-10T22:45:00+08:00, 2026-10-10T23:45:00+08:00) "CR-2026-0001"`，看得到 pve1 與收集端的 begin 與 end 四行。
 - 從收集端以外的任何主機 `ssh -V` 風格探一下 VM 的 SSH 版本字串，應為 `deb13`（Day 25 用這個方法確認過它是 `deb12u10`）。
 - 後續：onprem-metrics `eol/assets.tsv` 的 `qdevice/Debian` 兩列改成 13（`security_support_end` 2028-08-09，`lts_end` 2030-06-30，`eol_ref` debian/13），commit 訊息帶 `CR-2026-0001`，隔天 `AssetEolPassed` 消失。
 
