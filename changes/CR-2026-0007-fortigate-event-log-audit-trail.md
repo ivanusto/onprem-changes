@@ -11,8 +11,8 @@ approval_exception: 單人實驗場域，沒有第二位核准者。以 PR 自�
 assets:
   - fgt-edge/FortiOS
   - collector/Ubuntu
-window_start: 2026-10-11T14:00:00+08:00
-window_end: 2026-10-11T16:00:00+08:00
+window_start: 2026-10-11T16:30:00+08:00
+window_end: 2026-10-11T18:30:00+08:00
 silence: alertname=TargetDown job=victorialogs
 tags: fortigate, syslog, victorialogs, audit
 ---
