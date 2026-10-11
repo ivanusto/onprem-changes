@@ -1,7 +1,7 @@
 ---
 id: CR-2026-0007
 title: 60F 的事件日誌送到收集端 515，收集端加第二個監聽器與稽核報告、規則（Day 27）
-status: scheduled
+status: done
 type: standard
 risk: low
 requester: ivan
@@ -85,10 +85,8 @@ sudo -u metrics /opt/onprem-changes/scripts/change-mark.sh end CR-2026-0007
 
 ## 紀錄
 
-執行時填。
-
-- begin: 
-- end: 
-- result: 
-- evidence: 
-- followups: 
+- begin: 2026-10-11T16:30:15+08:00
+- end: 2026-10-11T16:39:17+08:00
+- result: 完成。窗原訂 14:00 到 16:00，PR #2 在 15:51 才合併，以 PR #3 移到 16:30 到 18:30 後施作，窗前兩台設備都沒動
+- evidence: 16:30 設定備份 `#config-version=FGT60F-7.6.7-FW-build3704`；16:31:09 容器重建，重建前 30 分鐘有資料的 6 個來源在 16:33:36 前都有新行（9428 四台、514 兩台）；60F 的 TCP 514 在 16:31:10 重連，兩台 NAS 走 UDP 514，不需重連；515 第一筆 16:34:21 logid `0100022905` Log device status has changed，下一筆是 syslogd3 setting 本身的 `0100044546`，報告歸到本單；16:39 為止 `audit:=fortigate` 只有 event/system，60F 記憶體日誌同時段的兩筆 wireless（16:35:43、16:37:43）沒有送出；`audit.prom` 四個指標族、Prometheus `audit` 群組四條 health ok、Alertmanager `/api/v2/status` 含新 inhibit，begin 的 silence 撐過容器重啟；封存演練（非 WORM 暫存目錄）的 MANIFEST 有 `audit-<devname>` 一列，sha256 OK
+- followups: syslogd3 filter 的 `ztna-traffic` 以 REST 送 disable 仍讀回 enable（`forward-traffic` 第一次合併送出也沒生效，單獨再送才生效），這台沒有 ZTNA，以收到的內容為準，下次用 CLI 確認；場域 `audit/ignore.txt` 含金鑰指紋，tar 部署會覆蓋，副本在 `ignore.txt.site`；10/12 08:10 看真正的 MANIFEST 列、08:45 看第一份週報（週一）
