@@ -1,0 +1,72 @@
+---
+id: CR-2026-0013
+title: 收集端的允許清單加上主 NAS 的第二個位址 .30，恢復主 NAS 事件日誌的收集
+status: scheduled
+type: standard
+risk: low
+requester: ivan
+implementer: ivan
+approver: ivan
+approval_exception: 單人實驗場域，沒有第二位核准者。以 PR 自審取代，PR 開啟與合併時間在 git log。冷卻未滿 24 小時，因為主 NAS 的事件日誌已斷超過 25 小時、每多一小時稽核軌跡就多一小時的洞，由擁有者以管理員略過合併
+assets:
+  - collector/Ubuntu
+window_start: 2026-10-12T23:00:00+08:00
+window_end: 2026-10-12T23:30:00+08:00
+silence: 
+tags: victorialogs, allowlist, nas, audit, day28
+---
+
+## 目的
+
+CR-2026-0011（Day 28 回退演練）在找演練 1 的 Virtualization Station 事件時發現：主 NAS 的事件日誌（QuLog 經 syslog 送到 514/tcp）從 2026-10-11 19:09:25 起沒有再進收集端。主 NAS 有兩個 LAN 位址，10/11 19:12 起出向的來源位址從 .2 變成 .30（同一件事讓 CR-2026-0008 把 HDP 的忽略規則改成只認金鑰），而收集端 `/etc/default/onprem-logs-allowlist` 的 `SYSLOG_FROM` 只有 .2。DOCKER-USER 的 `ONPREM-LOGS` 鏈把 .30 送來的連線丟掉，kernel log 每秒都有 `[DOCKER-USER DROP] SRC=192.168.2.30 ... DPT=514`。
+
+後果：Day 27 稽核報告的 nas-event 來源這段時間只有副 NAS，`AuditUnattributedActions` 的 nas-event 計數是安靜的 0，與「沒有事」分不出來。CR-2026-0011 的演練 1（快照建立、關機、回復、開機、刪除）因此在收集端完全沒有紀錄。
+
+這張單在 `SYSLOG_FROM` 加上 .30，保留 .2（主 NAS 哪天出向又換回 .2 時不會再斷一次）。不改主 NAS 的路由或出向位址，那是另一件事。
+
+## 影響
+
+- `onprem-logs-allowlist.service` 重新套用時，腳本先刪掉 `ONPREM-LOGS` 鏈再重建，中間約一秒沒有鏈，這一秒是放行不是阻擋，既有連線（`ESTABLISHED`）不受影響，不會掉資料。
+- 開放之後主 NAS 會重連 514/tcp。QuLog 在連不上的這 25 小時有沒有緩衝、重連後會不會補送，文件沒有寫，這張單會量。若不補送，洞只能從主 NAS 的 QuLog Center 匯出補回，另做。
+- 不需要靜音：沒有告警依賴主 NAS 的 514 連線本身。重連後如果補送大量舊事件，`AuditUnattributedActions` 的 nas-event 可能在下一輪報告出現 10/11 19:09 以來沒有單子的 NAS 動作，那些是真的動作，照實看，不靜音。
+
+## 步驟
+
+時間為 +08:00，全部在收集端上。
+
+```sh
+sudo -u metrics /opt/onprem-changes/scripts/change-mark.sh begin CR-2026-0013
+sudo journalctl -k --since -2min | grep -c 'DOCKER-USER DROP.*SRC=192.168.2.30.*DPT=514'     # 改之前，預期非 0
+sudo iptables -S ONPREM-LOGS | grep -- '--ctorigdstport 514' | grep -c RETURN                    # 改之前，預期 6（3 台 x tcp/udp）
+sudo cp -p /etc/default/onprem-logs-allowlist /etc/default/onprem-logs-allowlist.bak-cr0013
+sudo sed -i 's/^SYSLOG_FROM="192.168.2.2 /SYSLOG_FROM="192.168.2.2 192.168.2.30 /' /etc/default/onprem-logs-allowlist
+sudo sed -i '3a # The primary NAS has two LAN addresses (.2 and .30) and sends from either; list both (CR-2026-0013).' /etc/default/onprem-logs-allowlist
+grep ^SYSLOG_FROM /etc/default/onprem-logs-allowlist     # SYSLOG_FROM="192.168.2.2 192.168.2.30 192.168.2.22 192.168.2.99"
+sudo systemctl restart onprem-logs-allowlist.service
+sudo iptables -S ONPREM-LOGS | grep -- '-s 192.168.2.30/32'
+sudo -u metrics /opt/onprem-changes/scripts/change-mark.sh end CR-2026-0013
+```
+
+`/etc/default/onprem-logs-allowlist` 不是單檔 bind mount，`sed -i` 可以用。開單時實測收集端的 kernel log 在 2 分鐘內有 6 行來自 .30 的 DROP（LOG 規則另有 6/min 的限速，行數不等於被丟的封包數）。
+
+## 驗證
+
+- `iptables -S ONPREM-LOGS` 有 `-s 192.168.2.30/32` 的 514 tcp 與 udp 兩條 RETURN，514 的 RETURN 共 8 條。
+- 改完 2 分鐘後，`journalctl -k --since -2min | grep 'SRC=192.168.2.30.*DPT=514'` 是 0 行。
+- VictoriaLogs `_time:10m hostname:=<主 NAS 的 hostname>` 有新行。
+- 記下第一筆新行的 `_time`，以及 `_time:[2026-10-11T19:09:00+08:00, 2026-10-12T23:00:00+08:00] hostname:=<主 NAS>` 的行數，判斷 QuLog 有沒有補送那 25 小時。
+- 下一輪（10 分鐘內）`audit.prom` 的 `audit_actions{source="nas-event"}` 開始計入主 NAS。
+
+## 回退
+
+`/etc/default/onprem-logs-allowlist` 以 `.bak-cr0013` 覆回，`systemctl restart onprem-logs-allowlist.service`。回退之後主 NAS 回到被擋的狀態，與改之前相同。
+
+## 紀錄
+
+執行時填。
+
+- begin: 
+- end: 
+- result: 
+- evidence: 
+- followups: 
