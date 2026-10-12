@@ -38,12 +38,12 @@ tags: audit, victorialogs, day27
 ```sh
 sudo -u metrics /opt/onprem-changes/scripts/change-mark.sh begin CR-2026-0008
 diff /opt/onprem-logs/docker-compose.yml <(tar xOf onprem-logs-v0.5.1.tar docker-compose.yml)   # 預期無差異
-# tar 部署 v0.5.1，被覆蓋的檔留 *.bak-cr0008
+# tar 部署 v0.5.1（tag 9709e6a），被覆蓋的檔留 *.bak-cr0008
 sudo cp -p /opt/onprem-logs/audit/ignore.txt.site /opt/onprem-logs/audit/ignore.txt   # tar 會蓋掉場域清單
 sudoedit /opt/onprem-logs/audit/ignore.txt          # HDP 那條：from 192\.168\.2\.2 改成 from \S+
 sudo cp -p /opt/onprem-logs/audit/ignore.txt /opt/onprem-logs/audit/ignore.txt.site
 sudo cp -p /etc/cron.d/onprem-logs /etc/cron.d/onprem-logs.bak-cr0008
-sudoedit /etc/cron.d/onprem-logs                    # audit-report 那一行加 AUDIT_QUIET_FROM="192.168.2.131 192.168.2.10"
+sudoedit /etc/cron.d/onprem-logs                    # Day 27 兩行之前加一行 AUDIT_QUIET_FROM="192.168.2.131 192.168.2.10"（同 audit/collector.cron）
 sudo -u metrics env VL=http://127.0.0.1:9428 CHANGES_DIR=/opt/onprem-changes/changes AUDIT_QUIET_FROM="192.168.2.131 192.168.2.10" \
   /opt/onprem-logs/audit/audit-report.py --window 1h --textfile /var/lib/node_exporter/textfile/audit.prom --out /dev/null
 sudo -u metrics /opt/onprem-changes/scripts/change-mark.sh end CR-2026-0008
