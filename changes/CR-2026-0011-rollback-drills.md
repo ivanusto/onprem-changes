@@ -115,7 +115,8 @@ wait
 
 ```sh
 curl -s http://127.0.0.1:9428/select/logsql/query -d 'query=_time:30m | stats by (hostname, _HOSTNAME) max(_time) as last'
-sudo ss -tn state established '( sport = :514 or sport = :515 )'
+vlns() { sudo nsenter -t "$(sudo docker inspect -f '{{.State.Pid}}' onprem-logs-victorialogs-1)" -n "$@"; }
+vlns ss -tn state established '( sport = :514 or sport = :515 )'
 cd /opt/onprem-logs
 sudo cp docker-compose.yml docker-compose.yml.day28-current
 $CH/drills/drill.sh vlogs-single-listener-restore CR-2026-0011 CR-2026-0007 -t 300 -- \
@@ -129,11 +130,13 @@ wait
 
 ```sh
 $CH/drills/drill.sh vlogs-second-listener-forward CR-2026-0011 CR-2026-0007 -t 300 -- \
-  sh -c 'curl -sf http://127.0.0.1:9428/health >/dev/null && ss -tn state established "( sport = :515 )" | grep -q 515' &
+  sh -c 'curl -sf http://127.0.0.1:9428/health >/dev/null && sudo nsenter -t "$(sudo docker inspect -f "{{.State.Pid}}" onprem-logs-victorialogs-1)" -n ss -Htn state established "( sport = :515 )" | grep -q .' &
 sleep 2
 sudo cp docker-compose.yml.day28-current docker-compose.yml && sudo docker compose up -d
 wait
 ```
+
+連線要在容器的網路空間裡看。515 是 docker 以 DNAT 轉進容器的，主機上的 `ss -tn` 看不到 60F 的連線（主機上只看得到 docker-proxy 的 `LISTEN`），所以回退的驗證用主機的 `ss -ltn`，往前的驗證用 `nsenter` 進容器，容器重建後 PID 會變，每一次檢查都重新取。
 
 往前這一行的 `rollback_of` 仍寫 CR-2026-0007，因為它量的是同一張單回退之後再往前的路。`label` 不同，`changes-textfile.py` 只看 `rollback_of`，所以 CR-2026-0007 的「最後一次回退演練」會是這一行，`紀錄` 要寫清楚。
 
