@@ -1,7 +1,7 @@
 ---
 id: CR-2026-0011
 title: 回退演練，把三張已完成單子的回退段真的做一次（Day 28）
-status: scheduled
+status: done
 type: standard
 risk: medium
 requester: ivan
@@ -186,10 +186,8 @@ sudo -u metrics /opt/onprem-changes/scripts/change-mark.sh end CR-2026-0011
 
 ## 紀錄
 
-執行時填。
-
-- begin:
-- end:
-- result:
-- evidence:
-- followups:
+- begin: 2026-10-12T19:37:35+08:00（收集端 `change-mark.sh begin`，Grafana 註記 6，silence 73cdbefa 到 21:00）。PR #7 在 16:59 合併，窗開始後 37 分鐘才施作
+- end: 2026-10-12T20:00:59+08:00，註記 6 補上 timeEnd，silence 失效
+- result: 完成，四行 `drills.jsonl` 都是 OK。演練 1 rto_s 19、演練 2 rto_s 8、演練 3 回退 rto_s 4、往前 rto_s 14。三個預期有兩個不成立，照實寫在 `drills/drills.md`：運作中拍的快照連記憶體一起回復，VM 是接續不是開機（時鐘落後 3 分 31 秒，pve1 `check.sh` 通過之後兩台節點的 qdevice 用戶端又過了約 1 分鐘才連上，`pve_quorum_qdevice_votes` 0 一個取樣，`PveQdeviceAbsent` 只到 pending）；syslogd3 停用那一筆設定變更也送到了收集端；515 關閉 10 分鐘期間 60F 的事件只遺失斷線後的第一筆，其餘重連後補送
+- evidence: 部署 19:37 到 19:38，`changes` 群組六條、Alertmanager inhibit 含兩個新名字，舊檔 `*.bak-cr0011`。演練 1 標記檔 19:38:29 寫入，`check.sh` 19:39:21 回 1、19:39:41 回 0，回復後 Debian 13.7、標記檔不在。演練 2 60F 記憶體日誌與收集端都有 cfgtid 10289368（`status[enable->disable]`，19:45:29）與 10289369（`status[disable->enable]`，19:46:31），讀回 setting 與備份相同。演練 3 洞內 cfgtid 10289370 收集端沒有，以 `fortigate-export-load.py --source backfill` 補 1 行；10289371 與兩筆效能統計由 60F 重連後補送。`audit-report.py --since 19:00` 管理動作 118 筆全部歸到本單（fortigate-config 4、nas-event 3、ssh-login 66、sudo 45），沒有變更單的 0 筆
+- followups: 收集端 17:25 被 PVE 的 stopall 關機（17:18 到 17:29 兩台 PVE 經網頁 shell 做 apt 更新並重開，沒有單子），開機時 `systemd-journal-upload` 一秒內放棄，17:29 到 20:00 收集端自己的 journal 沒有上傳，20:00:34 在本單窗內 `systemctl restart`，以 `--save-state` 的游標補回，收集端也要裝 v0.5.2 的重試 drop-in（另開單）；主 NAS 的出向位址 10/11 19:12 起改成 .30，收集端的 `SYSLOG_FROM` 只有 .2，DOCKER-USER 一直在丟，10/11 19:09 起主 NAS 的事件日誌沒有進收集端，演練 1 的 Virtualization Station 事件也因此查不到（另開單）；窗內 19:15 副 NAS 的 App Center 更新 3 筆也被歸到本單，報告只看時間不看動作；QDevice VM 的暫時公鑰 20:00 前已由擁有者刪除，快照 `CR-2026-0011-before` 已刪；隔天 08:10 看 `audit-<devname>` 的 MANIFEST 列是否含補載的那一行
