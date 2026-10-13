@@ -13,8 +13,8 @@ assets:
   - collector/Ubuntu
   - pve1/Proxmox VE
   - qdevice/Debian
-window_start: 2026-10-13T21:00:00+08:00
-window_end: 2026-10-13T22:30:00+08:00
+window_start: 2026-10-13T18:00:00+08:00
+window_end: 2026-10-13T19:30:00+08:00
 silence: alertname=PveQdeviceAbsent
 tags: agent, gate, mcp, qdevice, day29
 ---
@@ -133,14 +133,14 @@ claude -p --resume <session_id> ... "<第 2 步>"
 
 ```sh
 sudo -u agent-gate gatectl verify --vl http://127.0.0.1:9428
-sudo -u metrics env CHANGES_DIR=/opt/onprem-changes/changes /opt/onprem-logs/audit/audit-report.py --since 2026-10-13T21:00:00+08:00
+sudo -u metrics env CHANGES_DIR=/opt/onprem-changes/changes /opt/onprem-logs/audit/audit-report.py --since 2026-10-13T18:00:00+08:00
 sudo -u metrics /opt/onprem-changes/scripts/change-mark.sh end CR-2026-0015
 ```
 
 ## 驗證
 
 - `gatectl tail` 的紀錄與步驟 1 到 6 的預期逐筆相符，決定的順序是 ALLOW 四筆、ALLOW、ALLOW、PENDING、APPROVED、ALLOW、PENDING、DENY、DENY、STOP、DENY、RESUME、ALLOW、ALLOW、DENY、DENY。`gatectl verify --vl` 回 `chain: ok` 而且每一筆都有 journal 行。
-- `audit-report.py --since 21:00` 的「依變更單」把閘道的每一行（來源 `agent-gate`）、收集端的 sudo（`gatectl approve`、`stop`、`resume`）、pve1 與 VM 收到的 `gate` 登入歸到本單。VM 的 sudo 行不在報告裡（journald 沒上傳），寫進 followups。
+- `audit-report.py --since 18:00` 的「依變更單」把閘道的每一行（來源 `agent-gate`）、收集端的 sudo（`gatectl approve`、`stop`、`resume`）、pve1 與 VM 收到的 `gate` 登入歸到本單。VM 的 sudo 行不在報告裡（journald 沒上傳），寫進 followups。
 - Prometheus：`agent` 群組五條載入，演練 3 的 PENDING 期間 `AgentGateApprovalWaiting` 到 pending 或 firing（看核准花多久），演練 5 期間 `AgentGateStopped` firing，`AgentGateChainBroken` 全程 inactive。`agent-gate.prom` 的 `agent_gate_decisions_total` 各 decision 的計數與 `gatectl tail` 相符。
 - Day 15 的 `check.sh` 在重啟 qnetd 與重開機各回 1 一次，`PveQdeviceAbsent` 的狀態記下來。
 - 代理程式在 PENDING 那一步真的停下來等，沒有重試。它對 DENY 的回報寫出了閘道給的理由。
