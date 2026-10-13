@@ -1,7 +1,7 @@
 ---
 id: CR-2026-0014
 title: 收集端自己的 journal-upload 改成持續重試，開機時 VictoriaLogs 還沒起來也不會放棄
-status: scheduled
+status: done
 type: standard
 risk: low
 requester: ivan
@@ -55,10 +55,8 @@ sudo -u metrics /opt/onprem-changes/scripts/change-mark.sh end CR-2026-0014
 
 ## 紀錄
 
-執行時填。
-
-- begin: 
-- end: 
-- result: 
-- evidence: 
-- followups: 
+- begin: 2026-10-12T23:30:31+08:00（收集端 `change-mark.sh begin`，Grafana 註記 8，沒有靜音）
+- end: 2026-10-12T23:30:43+08:00，註記 8 補上 timeEnd
+- result: 完成。`systemd-journal-upload` 改成 `RestartUSec=30s`、`StartLimitIntervalUSec=0`，23:30:32 重啟後 active，從游標續傳沒有漏行。「影響」段寫的「不會重送」不完全成立：重啟那一刻有 1 行送了兩次，23:30:32.405157 的 systemd `Reloading...`（`__SEQNUM` 147932，腳本裡第二次 `daemon-reload`），舊行程送出後還沒把游標寫進 state 就被停掉，新行程從前一行續傳。onprem-logs 的稽核報告以 `_time` 與內容判斷，重複的這一行不影響歸屬
+- evidence: 改前 `Restart=on-failure`、`RestartUSec=100ms`、`StartLimitBurst=5`、`StartLimitIntervalUSec=10s`，沒有 drop-in 目錄。腳本取 v0.5.2 的 `node/install-journal-upload.sh`（md5 4303b646b57c2633a7c0353bcc8751e0），`journal-upload.conf` 與 `.bak-cr0014` 相同（URL 不變）。改後 `systemctl cat` 末尾是 `10-retry.conf`，`systemd-journal-upload` 與 `systemd-journald` 都是 active。end 那一行在 2 秒內出現在 VictoriaLogs，`_HOSTNAME` 是 metrics。收集端 journal 與 VictoriaLogs 逐分鐘行數：23:28 到 23:30 12 與 12，23:30 到 23:31 172 與 173（多的就是上面那一行），23:31 到 23:32 6 與 6
+- followups: 驗證段的第三項沒有在窗內做：收集端下一次重開機（或另一張單裡 `docker stop` VictoriaLogs 3 分鐘再啟動），確認容器回來後 30 秒內恢復上傳、不需要人去重啟；`install-journal-upload.sh` 每次重跑都會重啟 journal-upload，重啟時可能重送最後一行，onprem-logs 的 README 可以寫一句

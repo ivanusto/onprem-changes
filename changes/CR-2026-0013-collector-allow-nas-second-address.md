@@ -1,7 +1,7 @@
 ---
 id: CR-2026-0013
 title: 收集端的允許清單加上主 NAS 的第二個位址 .30，恢復主 NAS 事件日誌的收集
-status: scheduled
+status: done
 type: standard
 risk: low
 requester: ivan
@@ -63,10 +63,8 @@ sudo -u metrics /opt/onprem-changes/scripts/change-mark.sh end CR-2026-0013
 
 ## 紀錄
 
-執行時填。
-
-- begin: 
-- end: 
-- result: 
-- evidence: 
-- followups: 
+- begin: 2026-10-12T23:00:59+08:00（收集端 `change-mark.sh begin`，Grafana 註記 7，沒有靜音）
+- end: 2026-10-12T23:06:47+08:00，註記 7 補上 timeEnd
+- result: 完成。.30 的 514 放行，主 NAS 23:02:01 起重新進收集端。QuLog 沒有補送斷線的這段：`_time:[2026-10-11T19:09:00+08:00, 2026-10-12T23:00:00+08:00] hostname:=<主 NAS>` 改前改後都是 2 行（都在 10/11 19:09:00 到 19:09:25，斷線之前），約 28 小時的洞只能從主 NAS 的 QuLog Center 匯出補回。`audit_actions{source="nas-event"}` 到 end 時仍是 0：nas-event 只算 QuLog 的 `event log:` 行，重連後進來的 5 行都是 `conn log:`（Day 19 指標 cron 每分鐘以 SSH 登入主 NAS），主 NAS 下一筆事件日誌出現時才會計入，不是本單的缺口
+- evidence: 改前 2 分鐘內 kernel log 有 6 行 `[DOCKER-USER DROP] SRC=192.168.2.30 ... DPT=514`（PROTO=TCP、SYN），`ONPREM-LOGS` 的 514 RETURN 6 條。23:01:12 `sed` 兩行並 `systemctl restart onprem-logs-allowlist.service`，`diff` 與 `.bak-cr0013` 只差註解一行與 `SYSLOG_FROM` 多了 .30；`-s 192.168.2.30/32` 的 tcp 與 udp 兩條 RETURN，514 的 RETURN 共 8 條。23:01:13 到 23:06:40 .30 的 DROP 0 行。VictoriaLogs 第一筆新行 `_time` 2026-10-12T23:02:01+08:00（`app_name` qulogd），到 23:06:01 共 5 行，每分鐘一行。改前的 DROP 每分鐘換一個來源埠（23:00:03 的 49048、23:01:01 到 23:01:03 的 47762 重送 SYN），容器網路命名空間裡的 `ss` 在 23:02:10 與 23:06:40 都看不到 .30 的常駐 514 連線，QuLog 看起來是每次送出各開一條連線、連不上就丟掉那一筆，所以沒有緩衝可補
+- followups: 從主 NAS 的 QuLog Center 匯出 2026-10-11 19:09 到 2026-10-12 23:02 的事件日誌，以 `--source backfill` 補載（另開單）；主 NAS 下一筆 `event log:` 出現後確認 `audit_actions{source="nas-event"}` 計入主 NAS；onprem-logs 預設允許清單已含 .30（day28 分支，v0.5.3 發布）
