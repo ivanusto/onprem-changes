@@ -1,7 +1,7 @@
 ---
 id: CR-2026-0015
 title: 裝 onprem-agent-gate，讓代理程式在本單的窗內檢查 QDevice 並重啟 qnetd，重開機要人核准（Day 29）
-status: scheduled
+status: in_progress
 type: standard
 risk: medium
 requester: ivan
