@@ -14,7 +14,7 @@ assets:
   - pve1/Proxmox VE
   - qdevice/Debian
 window_start: 2026-10-13T18:00:00+08:00
-window_end: 2026-10-13T19:30:00+08:00
+window_end: 2026-10-13T20:05:00+08:00
 silence: alertname=PveQdeviceAbsent
 tags: agent, gate, mcp, qdevice, day29
 ---
