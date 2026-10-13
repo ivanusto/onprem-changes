@@ -63,13 +63,13 @@ sudo -u metrics git -C /opt/onprem-changes pull -q --ff-only
 依 onprem-agent-gate `docs/targets.md` 的「Collector」段：
 
 ```sh
-sudo useradd --system --home /var/lib/onprem-agent-gate --shell /usr/sbin/nologin agent-gate
+sudo useradd --system --home /var/lib/onprem-agent-gate --shell /bin/sh agent-gate   # sshd 以登入 shell 執行強制命令，nologin 會擋掉
 sudo install -d -o agent-gate -g agent-gate -m 0750 /var/lib/onprem-agent-gate /var/lib/onprem-agent-gate/approvals /var/lib/onprem-agent-gate/.ssh
 sudo install -d -m 0755 /etc/onprem-agent-gate /opt/onprem-agent-gate
 sudo cp -r ~/cr0015/onprem-agent-gate/bin ~/cr0015/onprem-agent-gate/gate /opt/onprem-agent-gate/
 sudo install -m 0644 ~/cr0015/onprem-agent-gate/tools.json /etc/onprem-agent-gate/tools.json
 sudo install -m 0644 ~/cr0015/onprem-agent-gate/config.json.example /etc/onprem-agent-gate/config.json
-sudoedit /etc/onprem-agent-gate/config.json          # targets 用位址 gate@192.168.2.9、gate@192.168.2.148（收集端解析不到 pve1、qdevice），principal agent:ops
+sudoedit /etc/onprem-agent-gate/config.json          # stop_file 在 /var/lib/onprem-agent-gate/STOP（gatectl stop 以 agent-gate 執行，/etc 寫不進去）；targets 用位址 gate@192.168.2.9、gate@192.168.2.148（收集端解析不到 pve1、qdevice），principal agent:ops
 sudo ln -s /opt/onprem-agent-gate/bin/gatectl /usr/local/bin/gatectl
 sudo -u agent-gate ssh-keygen -t ed25519 -N '' -f /var/lib/onprem-agent-gate/.ssh/id_gate -C agent-gate@collector
 sudo -u agent-gate sh -c 'ssh-keyscan -t ed25519 192.168.2.9 192.168.2.148 > /var/lib/onprem-agent-gate/.ssh/known_hosts'
