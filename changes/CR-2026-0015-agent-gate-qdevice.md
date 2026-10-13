@@ -1,7 +1,7 @@
 ---
 id: CR-2026-0015
 title: 裝 onprem-agent-gate，讓代理程式在本單的窗內檢查 QDevice 並重啟 qnetd，重開機要人核准（Day 29）
-status: in_progress
+status: done
 type: standard
 risk: medium
 requester: ivan
@@ -156,8 +156,8 @@ sudo -u metrics /opt/onprem-changes/scripts/change-mark.sh end CR-2026-0015
 
 執行時填。
 
-- begin:
-- end:
-- result:
+- begin: 2026-10-13T18:00:03+08:00
+- end: 2026-10-13T20:06:11+08:00
+- result: success with deviations; details follow in the closing PR
 - evidence:
 - followups:
