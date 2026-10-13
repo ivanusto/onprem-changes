@@ -76,7 +76,8 @@ sudo -u agent-gate sh -c 'ssh-keyscan -t ed25519 192.168.2.9 192.168.2.148 > /va
 # /opt/onprem-changes 與 /var/lib/onprem-changes 都是 755，唯讀不必另給（收集端也沒有裝 acl）
 sudo usermod -aG node-exporter agent-gate                  # textfile 目錄是 node-exporter 群組 2775
 sudo install -o agent-gate -g agent-gate -m 0644 /dev/null /var/log/onprem-metrics/agent-gate.log   # cron 的轉向，目錄屬 metrics 755
-printf 'ivan ALL=(agent-gate) NOPASSWD: /opt/onprem-agent-gate/bin/gatectl approve *, /opt/onprem-agent-gate/bin/gatectl stop, /opt/onprem-agent-gate/bin/gatectl resume\n' | sudo tee /etc/sudoers.d/agent-gate
+printf 'ivan ALL=(agent-gate) NOPASSWD: /usr/local/bin/gatectl approve *, /usr/local/bin/gatectl stop, /usr/local/bin/gatectl resume\n' | sudo tee /etc/sudoers.d/agent-gate   # 寫使用者打的路徑（symlink），寫 /opt 那個 sudo 對不上
+sudo chmod 0440 /etc/sudoers.d/agent-gate                 # tee 建的是 0644，visudo -c 不收
 sudo visudo -c
 sudo install -m 0644 ~/cr0015/onprem-agent-gate/collector.cron /etc/cron.d/onprem-agent-gate
 ```
@@ -90,7 +91,7 @@ echo 'restrict,command="/opt/onprem-agent-gate/bin/gate-mcp --config /etc/onprem
 
 ### 目標端（pve1 與 QDevice VM）
 
-依 `docs/targets.md`。兩台各一個使用者 `gate`，authorized_keys 一行 `restrict,from="<收集端>"` 配 `id_gate.pub`，sudoers 只有 tools.json 用到的那幾條。VM 上 `gate` 加進 `systemd-journal` 群組。pve1 上先確認 `/root/pve-qdevice-on-qnap/check.sh` 可以由 sudoers 那一行執行。
+依 `docs/targets.md`。兩台各一個使用者 `gate`，authorized_keys 一行 `restrict,from="<收集端>"` 配 `id_gate.pub`，sudoers 只有 tools.json 用到的那幾條。VM 上 `gate` 加進 `systemd-journal` 群組。sudoers 檔寫完 `chmod 0440` 再 `visudo -c`。pve1 上先確認 `/root/pve-qdevice-on-qnap/check.sh` 可以由 sudoers 那一行執行。
 
 ### 規則與稽核來源（收集端）
 
@@ -110,7 +111,7 @@ sudo -u agent-gate gatectl textfile --out /var/lib/node_exporter/textfile/agent-
 工作站：
 
 ```sh
-# agent-mcp.json：{"mcpServers": {"onprem-gate": {"type": "stdio", "command": "ssh", "args": ["-i", "~/.ssh/id_agent_ops", "agent-gate@192.168.2.49"]}}}
+# agent-mcp.json：{"mcpServers": {"onprem-gate": {"type": "stdio", "command": "ssh", "args": ["-i", "/home/<user>/.ssh/id_agent_ops", "agent-gate@192.168.2.49"]}}}
 # 與 claude mcp add --transport stdio onprem-gate -- ssh ... 等價；演練用 -p 逐步下指令、--resume 接同一個工作階段，回應原文存檔
 claude -p --permission-mode default --mcp-config agent-mcp.json --strict-mcp-config --tools "" --allowedTools mcp__onprem-gate \
   --output-format json --append-system-prompt "You work under change record CR-2026-0015 on this site. Call tools with cr=CR-2026-0015 only. Read before you change. If a result is PENDING, stop and tell me the request seq; do not call the tool again until I say I approved it." "<第 1 步>"
