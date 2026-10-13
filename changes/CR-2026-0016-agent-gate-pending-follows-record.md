@@ -1,7 +1,7 @@
 ---
 id: CR-2026-0016
 title: 收集端的 onprem-agent-gate 換成 v0.1.0 tag 版，PENDING 跟著單子的窗與狀態，結案後的等待核准告警自己消失
-status: scheduled
+status: done
 type: standard
 risk: low
 requester: ivan
@@ -61,10 +61,8 @@ sudo -u metrics /opt/onprem-changes/scripts/change-mark.sh end CR-2026-0016
 
 ## 紀錄
 
-執行時填。
-
-- begin: 
-- end: 
-- result: 
-- evidence: 
-- followups: 
+- begin: 2026-10-13T21:30:02+08:00（Grafana 註記 10，silence 41d281f7 到 22:00）
+- end: 2026-10-13T21:31:23+08:00，註記 10 補上 timeEnd，silence 失效
+- result: 完成。`gate/core.py` 與 `bin/gatectl` 換成 v0.1.0（d123e11），舊檔 `*.bak-cr0016`；diff 只有 `pending()`、`approve()` 與 `open_for_changes()` 以及 `gatectl pending` 的提示
+- evidence: 21:30:12 `gatectl pending` 回 `no pending requests`，`agent_gate_pending_approvals 0`；`gatectl verify --vl` `chain: ok (27 records)`，VictoriaLogs 27 行，0 筆缺行、0 筆 hash 不符；`AgentGateApprovalWaiting` 21:31:20 起不再出現在 Prometheus 的 alerts（20:03 起 firing）
+- followups: 無
